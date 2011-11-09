@@ -4,7 +4,7 @@
 % :- solve(test02('"Tim Berners-Lee"', Weblog)).
 % :- solve(test03(Name, "<http://dig.csail.mit.edu/breadcrumbs/blog/4>" )).
 % :- solve(testDBpedia(Object, "<http://dbpedia.org/resource/Berlin>" )).
-:- solve(testDBpedia2(Object)).
+:- solve(testDBpedia2()).
 
 test01(URL, Type) :-
 	QueryString = '
@@ -59,11 +59,19 @@ testDBpedia(Object, URL) :-
    
    
    
-testDBpedia2(Object) :-
+testDBpedia2() :-
    QueryString = '
-     SELECT ?object 
-       WHERE {
-         <http://dbpedia.org/resource/Berlin>  ?p ?object .
-        }
+		PREFIX foaf: <http://xmlns.com/foaf/0.1/>
+		PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+		SELECT ?contributor ?url ?type
+			FROM <file:///home/malte/Downloads/bloggers.rdf>
+			WHERE {
+				?contributor foaf:name "Bob DuCharme" .
+				?contributor foaf:weblog ?url .
+				?contributor rdf:type ?type .
+			}
    ',
-   sparql_select(QueryString, [object(Object)]  , [] , "http://dbpedia.org/sparql"). 
+   sparql_select(QueryString, Id),
+   println(["Id = ", Id]),
+   sparql_results(Id, Contributor, Url, Type),
+   println([Contributer, Url, Type]).

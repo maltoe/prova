@@ -2,6 +2,7 @@ package ws.prova.reference2.builtins;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 import java.util.regex.Matcher;
 
 import org.apache.log4j.Logger;
@@ -29,7 +30,6 @@ import ws.prova.kernel2.ProvaVariablePtr;
 import ws.prova.reference2.ProvaConstantImpl;
 import ws.prova.reference2.ProvaListImpl;
 import ws.prova.reference2.ProvaLiteralImpl;
-import ws.prova.reference2.ProvaPredicateImpl;
 import ws.prova.reference2.ProvaRuleImpl;
 
 public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
@@ -42,7 +42,7 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 	
 	@Override
 	public int getArity() {
-		return 2;
+		return 3;
 	}
 	
 	@Override
@@ -69,6 +69,18 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 		if(select_query == null)
 			return false;
 		
+		// If the second parameter (request Id) is not bound, assign it now.
+		Long id = new Long(0);
+		ProvaObject oid = resolve(data[1], variables);
+		if(!(oid instanceof ProvaConstant)) {
+			Random r = new Random(System.currentTimeMillis()); 
+			id = r.nextLong();
+		} else {
+			// TODO: Maybe remove all clauses matching (Id, x, x, ...) from sparql_results
+			// clauseSet.
+			id = (Long) ((ProvaConstant) oid).getObject();
+		}
+		
 		// Execute query
 		ResultSet results = null;
 		try {
@@ -81,29 +93,15 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 		}
 				
 		// Create a new nameless predicate
-		//ProvaPredicate pred = new ProvaPredicateImpl("", getArity(), kb);
-		ProvaPredicate pred = new ProvaPredicateImpl("", getArity(), kb);
+		ProvaPredicate pred = kb.getOrGeneratePredicate("sparql_results", select_query.getArity() + 1);
 		
 		// Process the results (moved to another function for readability)
-		int matches = processResults(results, data, pred, variables);
+		boolean ok = processResults(results, data, pred, variables, id);
 		
 		// Close the stream.
 		select_query.destroy();
-				
-		if(matches == -1) {
-			return false;
-		} else if(matches > 0) {
-			// create a new Literal of the pseudo predicate and replace the current goal with it.
-			ProvaLiteral newLiteral = new ProvaLiteralImpl(pred,terms);
-			newLiterals.add(newLiteral);
-		} else {
-			// Fail.
-			ProvaLiteral newLiteral = new ProvaLiteralImpl(new ProvaPredicateImpl("fail", 0, kb), 
-					ProvaListImpl.create(new LinkedList<ProvaObject>()));
-			newLiterals.add(newLiteral);
-		}
-
-		return true;
+		
+		return ok;
 	}
 
 	protected JenaSparqlQuery processTerms(ProvaList terms, List<ProvaVariable> variables) {
@@ -184,104 +182,45 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 		return new JenaSparqlQuery(query_string, service);
 	}
 	
-	protected int processResults(ResultSet results, ProvaObject[] data,
-			ProvaPredicate pred, List<ProvaVariable> variables) {
-		int matches = 0;
-		
-		// Second term should be a list: [var(Var),var(Var)...]
-		ProvaObject l = data[1];
-		if(!(l instanceof ProvaList)) {
-			if(log.isDebugEnabled())
-				log.debug("Error: second term should be a list.");
-			return -1;
-		}
-		ProvaObject[] params = ((ProvaList) l).getFixed();
-		
+	protected boolean processResults(ResultSet results, ProvaObject[] data,
+			ProvaPredicate pred, List<ProvaVariable> variables, Long id) {
+			
 		// Cycle through result set
 		while (results.hasNext()) {
 			QuerySolution solution = results.nextSolution();
-			boolean matched = true;
 			List<ProvaObject> terms_list = new LinkedList<ProvaObject>();
 			
-			// Iterate over desired variables/constants
-			for(int i = 0; i < params.length; ++i) {
-				
-				ProvaObject current_param = resolve(params[i], variables);
-							
-				// Parameter must be in the form of 'var(Var)' where 'var' is the sparql name ?var
-				// and Var is a Prova variable or constant
-				if(current_param instanceof ProvaList) {
-					// After this, param_data[0] should be a ProvaConstant, whereas param_data[1] 
-					// is ProvaConstant or ProvaVariablePtr.
-					ProvaObject[] param_data = ((ProvaList) current_param).getFixed();
-									
-					// Syntax error. TODO maybe remove this to increase processing speed
-					if(!(param_data[0] instanceof ProvaConstant)) {
-						if(log.isDebugEnabled())
-							log.debug("Syntax error. First list entry of every parameter" +
-									" must be a string corresponding to a select variable.");
-						return -1;
-					}
-					
-					String field_name = ((ProvaConstant) param_data[0]).toString();
-					
-					// Extract the matching field from the solution.
-					RDFNode rn = solution.get(field_name);
-					if(rn == null) {
-						if(log.isDebugEnabled())
-							log.debug("No such variable in the select query: " + field_name + ".");
-						return -1;
-					}
-					
-					Object field = null;
-					if(rn.isLiteral())
-						field = rn.asLiteral().getValue();
-					else
-						field = rn.toString();
-									
-					if(param_data[1] instanceof ProvaConstant) {
-						// Only add the solution's field if it matches the constant
-						if(!(field.equals(((ProvaConstant) param_data[1]).toString()))) {
-							// thus the whole solution does not match
-							matched = false;
-							break;
-						}
-					}
-					
-					// Add it to the list. Variables match anyway.
-					terms_list.add(ProvaListImpl.create(
-						new ProvaObject[] {param_data[0], ProvaConstantImpl.create(field)}));
-				} else {
-					// current_param is !instanceof ProvaList. Probably syntax error or old syntax.
-					// TODO other parameter types (java.util.List for the remaining fields?)
+			// Add id as first term
+			terms_list.add(ProvaConstantImpl.create(id));
+			
+			for(String var : results.getResultVars()) {
+			
+				// Extract the matching field from the solution.
+				RDFNode rn = solution.get(var);
+				if(rn == null) {
 					if(log.isDebugEnabled())
-						log.debug("Syntax error: Term " + i + " in list is not a list.");
-					return -1;
+						log.debug("No such result in the select query: " + var + ".");
+					return false;
 				}
+				
+				Object field = null;
+				if(rn.isLiteral())
+					field = rn.asLiteral().getValue();
+				else
+					field = rn.toString();
+								
+				
+				// Add it to the list. Variables match anyway.
+				terms_list.add(ProvaConstantImpl.create(field));
 			}
 			
-			if(matched) {
-				// Construct final terms list for new predicate
-				List<ProvaObject> final_terms_list = new LinkedList<ProvaObject>();
-				final_terms_list.add(data[0]);
-
-				// new terms have to be placed in a ProvaList again
-				final_terms_list.add(ProvaListImpl.create(terms_list));
-				
-				// data.length can be 2 (no optional params), 3 (incl. replacement list), or 4 (with service string)
-				for(int i = 2; i < data.length; ++i)
-					final_terms_list.add(data[i]);
-				
-				// We create a virtual fact from the knowledge we gathered, with 'pred' as its head literal.
-				ProvaList ls = ProvaListImpl.create(final_terms_list);
-				ProvaLiteral lit = new ProvaLiteralImpl(pred,ls);
-				ProvaRule clause = ProvaRuleImpl.createVirtualRule(1, lit, null);
-				pred.addClause(clause);
-				++matches;
-			}
+			ProvaList ls = ProvaListImpl.create(terms_list);
+			ProvaLiteral lit = new ProvaLiteralImpl(pred,ls);
+			ProvaRule clause = ProvaRuleImpl.createVirtualRule(1, lit, null);
+			pred.addClause(clause);
 		}
 		
-		return matches;
+		return true;
 	}
 	
 	/*
@@ -308,6 +247,10 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 			jena_query = QueryFactory.create(query);
 		}	
 		
+		public int getArity() {
+			return jena_query.getResultVars().size();
+		}
+
 		public ResultSet execute() {
 			// Query execution
 			if(service != null)
