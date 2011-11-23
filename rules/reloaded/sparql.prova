@@ -1,77 +1,28 @@
-% Test sparql select with FROM clause
-
-% :- solve(test01(X, Y)).
-% :- solve(test02('"Tim Berners-Lee"', Weblog)).
-% :- solve(test03(Name, "<http://dig.csail.mit.edu/breadcrumbs/blog/4>" )).
-% :- solve(testDBpedia(Object, "<http://dbpedia.org/resource/Berlin>" )).
-:- solve(testDBpedia2()).
-
-test01(URL, Type) :-
-	QueryString = '
-		PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-		PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-		SELECT ?contributor ?url ?type
-			FROM <http://teymourian.de/bloggers.rdf>
+:- solve(testFromClause(Object)).
+:- solve(testSparqlEPAndReplacement(Predicate, Object, "<http://dbpedia.org/resource/Berlin>" )).   
+   
+   
+testFromClause(Object) :-
+   QueryString = '
+		PREFIX RDF: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+		PREFIX ANIMALS: <http://www.some-ficticious-zoo.com/rdf#>
+		SELECT ?name
+			FROM <http://www.w3.org/2000/10/rdf-tests/Miscellaneous/animals.rdf>
 			WHERE {
-				?contributor foaf:name "Bob DuCharme" .
-				?contributor foaf:weblog ?url .
-				?contributor rdf:type ?type .
+				?animal ANIMALS:name ?name .
+				?animal ANIMALS:class "Mammal" .
 			}
-	',
-	sparql_select(QueryString,[url(URL),type(Type)]).
-	
-test02(Name, Weblog) :-
-   QueryString = '
-     PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-     SELECT ?weblog
-       FROM <http://teymourian.de/bloggers.rdf>
-       WHERE {
-         ?person foaf:name $name .
-         ?person foaf:weblog ?weblog .
-       }
    ',
-   sparql_select(QueryString, [weblog(Weblog)],  [name(Name)] ),
-   println(["Name ", Name ]).
+   sparql_select(QueryString, Id),
+   sparql_results(Id, Object).
 
-   
-   
- test03(Name, Weblog) :-
+
+testSparqlEPAndReplacement(Predicate, Object, URL) :-
    QueryString = '
-     PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-     SELECT ?name
-       FROM <http://teymourian.de/bloggers.rdf>
-       WHERE {
-         ?person foaf:name ?name .
-         ?person foaf:weblog $weblog .
-       }
-   ',
-   sparql_select(QueryString, [name(Name)] , [weblog(Weblog)] ).
-   
-   
-testDBpedia(Object, URL) :-
-   QueryString = '
-     SELECT ?object 
+     SELECT ?p ?object 
        WHERE {
           $url ?p ?object .
         }
    ',
-   sparql_select(QueryString, [object(Object)] , [url(URL)] , "http://dbpedia.org/sparql"). 
-   
-   
-   
-testDBpedia2() :-
-   QueryString = '
-		PREFIX foaf: <http://xmlns.com/foaf/0.1/>
-		PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-		SELECT ?contributor ?url ?type
-			FROM <file:///home/malte/Downloads/bloggers.rdf>
-			WHERE {
-				?contributor foaf:name "Bob DuCharme" .
-				?contributor foaf:weblog ?url .
-				?contributor rdf:type ?type .
-			}
-   ',
-   sparql_select(QueryString, Id),
-   println(["Id = ", Id]),
-   sparql_results(Id, Contributor, Url, Type),
-   println([Contributer, Url, Type]).
+   sparql_select(QueryString, Id, [url(URL)], "http://dbpedia.org/sparql"),
+   sparql_results(Id, Predicate, Object). 
