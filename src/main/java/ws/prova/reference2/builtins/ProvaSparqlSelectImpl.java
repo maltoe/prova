@@ -65,8 +65,8 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 		}
 				
 		// Create a SparqlQuery instance
-		JenaSparqlQuery select_query = processTerms(terms, variables);
-		if(select_query == null)
+		JenaSparqlQuery jsq = processTerms(terms, variables);
+		if(jsq == null)
 			return false;
 		
 		// If the second parameter (request Id) is not bound, assign it now.
@@ -81,25 +81,48 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 			id = (Long) ((ProvaConstant) oid).getObject();
 		}
 		
-		// Execute query
-		ResultSet results = null;
-		try {
-			results = select_query.execute();
-		//} catch (QueryExecutionException e) {
-		} catch (Exception e) {
-			if(log.isDebugEnabled())
-				log.debug("Error while executing query: ", e);
-			return false;
-		}
-				
-		// Create a new nameless predicate
-		ProvaPredicate pred = kb.getOrGeneratePredicate("sparql_results", select_query.getArity() + 1);
+
 		
-		// Process the results (moved to another function for readability)
-		boolean ok = processResults(results, data, pred, variables, id);
+		boolean ok;
+		
+		// Create a new nameless predicate
+		ProvaPredicate pred = kb.getOrGeneratePredicate("sparql_results", jsq.getArity() + 1);
+		
+		if(jsq.isAsk()) {
+			try {
+				// Execute ASK query
+				boolean result = jsq.executeAsk();
+				ok = true;
+				
+				// If positive answer, add sparql_results(Id) fact to knowledge base.
+				if(result) {
+					ProvaList ls = ProvaListImpl.create(new ProvaObject[] {ProvaConstantImpl.create(id)});
+					ProvaLiteral lit = new ProvaLiteralImpl(pred, ls);
+					ProvaRule clause = ProvaRuleImpl.createVirtualRule(1, lit, null);
+					pred.addClause(clause);
+				}
+				
+			} catch (Exception e) {
+				if(log.isDebugEnabled())
+					log.debug("Error while executing query: ", e);
+				ok = false;
+			}
+		} else {		
+			try {
+				// Execute SELECT query
+				ResultSet results = jsq.executeSelect();
+
+				// Process the results (moved to another function for readability)
+				ok = processResults(results, data, pred, variables, id);
+			} catch (Exception e) {
+				if(log.isDebugEnabled())
+					log.debug("Error while executing query: ", e);
+				ok = false;
+			}
+		}
 		
 		// Close the stream.
-		select_query.destroy();
+		jsq.destroy();
 		
 		return ok;
 	}
@@ -245,20 +268,33 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 			query = q;
 			service = s;
 			jena_query = QueryFactory.create(query);
-		}	
-		
-		public int getArity() {
-			return jena_query.getResultVars().size();
-		}
-
-		public ResultSet execute() {
-			// Query execution
+			
 			if(service != null)
 				jena_query_execution = QueryExecutionFactory.sparqlService(service, jena_query);
 			else
 				jena_query_execution = QueryExecutionFactory.create(jena_query);
+		}	
+		
+		public int getArity() {
+			if(isAsk()) {
+				return 0;
+			} else {
+				return jena_query.getResultVars().size();
+			}
+		}
+		
+		public boolean isAsk() {
+			return jena_query.isAskType();
+		}
+
+		public ResultSet executeSelect() {
 			ResultSet results = jena_query_execution.execSelect();
 			return results;
+		}
+		
+		public boolean executeAsk() {
+			boolean result = jena_query_execution.execAsk();
+			return result;
 		}
 		
 		public void destroy() {

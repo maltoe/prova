@@ -1,5 +1,6 @@
 :- solve(testFromClause(Object)).
-:- solve(testSparqlEPAndReplacement(Predicate, Object, "<http://dbpedia.org/resource/Berlin>" )).   
+:- solve(testSparqlEPAndReplacement(Predicate, Object, "<http://dbpedia.org/resource/Berlin>" )).  
+:- solve(testAskQuery()). 
    
    
 testFromClause(Object) :-
@@ -26,3 +27,14 @@ testSparqlEPAndReplacement(Predicate, Object, URL) :-
    ',
    sparql_select(QueryString, Id, [url(URL)], "http://dbpedia.org/sparql"),
    sparql_results(Id, Predicate, Object). 
+
+testAskQuery() :-
+   QueryString = '
+		PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+		PREFIX owl: <http://www.w3.org/2002/07/owl#>
+		ASK WHERE {
+			<http://dbpedia.org/resource/Microsoft> rdf:type owl:Thing .
+		}
+   ',
+   sparql_select(QueryString, Id, [], "http://dbpedia.org/sparql"),
+   sparql_results(Id). 
