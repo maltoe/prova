@@ -273,6 +273,8 @@ public class ProvaReagentImpl implements ProvaReagent {
 		};
 		switch (threadPool) {
 		case MAIN:
+			if( executor.isShutdown() )
+				return;
 			try {
 				executor.execute(job);
 			} catch( RejectedExecutionException r ) {
@@ -283,6 +285,8 @@ public class ProvaReagentImpl implements ProvaReagent {
 			}
 			break;
 		case TASK:
+			if( pool.isShutdown() )
+				return;
 			try {
 				pool.execute(job);
 			} catch( RejectedExecutionException r ) {
@@ -311,13 +315,16 @@ public class ProvaReagentImpl implements ProvaReagent {
 			}
 			break;
 		case CONVERSATION:
+			final ExecutorService executorService = partitionedPool[threadIndex(partition)];
+			if( executorService.isShutdown() )
+				return;
 			try {
-				partitionedPool[threadIndex(partition)].execute(job);
+				executorService.execute(job);
 			} catch( RejectedExecutionException r ) {
 				try {
 					Thread.sleep(0L, 100);
 				} catch (InterruptedException ignored) {}
-				partitionedPool[threadIndex(partition)].execute(job);
+				executorService.execute(job);
 			}
 		}
 	}

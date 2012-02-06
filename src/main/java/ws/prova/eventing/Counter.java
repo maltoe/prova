@@ -1,6 +1,8 @@
 package ws.prova.eventing;
 
-public class Counter implements ProvaEventsAccumulator {
+public class Counter extends ProvaBasicEventsAccumulatorImpl {
+
+	private static final long serialVersionUID = -964631029823380079L;
 
 	private long count;
 	
@@ -8,6 +10,7 @@ public class Counter implements ProvaEventsAccumulator {
 	}
 	
 	public Counter(Counter counter) {
+		super(counter);
 		this.count = counter.count;
 	}
 

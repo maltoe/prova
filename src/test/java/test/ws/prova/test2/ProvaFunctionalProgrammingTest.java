@@ -133,6 +133,30 @@ public class ProvaFunctionalProgrammingTest {
 	}
 
 	/*
+	 * Demonstrate using functional stream fusion for pattern detection.
+	 * Sum the size of all purchases by User greater than 16 within 8 time units after User logs in.
+	 */
+	@Test
+	public void func_reactive_followed_by() {
+		final String rulebase = "rules/reloaded/func_fby.prova";
+		Map<String,Object> globals = new HashMap<String,Object>();
+		AtomicInteger count = new AtomicInteger();
+		globals.put("$Count", count);
+		
+		new ProvaCommunicatorImpl(kAgent,kPort,rulebase,ProvaCommunicatorImpl.SYNC,globals);
+
+		try {
+			synchronized(this) {
+				wait(2000);
+				org.junit.Assert.assertEquals(3,count.get());
+			}
+		} catch (Exception e) {
+			org.junit.Assert.fail("Unexpected exception: "+e.getLocalizedMessage());
+		}
+
+	}
+
+	/*
 	 * Demonstrate unfoldr-like functionality with embedded reactions.
 	 * Detect 2 consecutive events with values <= 5.
 	 */
@@ -280,6 +304,22 @@ public class ProvaFunctionalProgrammingTest {
 		org.junit.Assert.assertEquals(numSolutions.length,solutions.size());
 		org.junit.Assert.assertEquals(numSolutions[0],solutions.get(0).length);
 		org.junit.Assert.assertEquals(numSolutions[1],solutions.get(1).length);
+	}
+
+	@Test
+	/**
+	 * Breadth-first traversal and labelling using Prova unfoldr (corecursion)
+	 */
+	public void func_breadth_first() {
+		final String rulebase = "rules/reloaded/func_020.prova";
+		final int[] numSolutions = new int[] {0,1,1,1,1};
+		
+		ProvaCommunicator prova = new ProvaCommunicatorImpl(kAgent,kPort,rulebase,ProvaCommunicatorImpl.SYNC);
+		List<ProvaSolution[]> solutions = prova.getInitializationSolutions();
+
+		org.junit.Assert.assertEquals(numSolutions.length,solutions.size());
+		for( int i=0; i<numSolutions.length; i++)
+			org.junit.Assert.assertEquals(numSolutions[i],solutions.get(i).length);
 	}
 
 	@Test

@@ -3,8 +3,12 @@ package ws.prova.eventing;
 import java.util.Map;
 import java.util.TreeMap;
 
-public class MapCounter implements ProvaEventsAccumulator {
+public class MapCounter extends ProvaBasicEventsAccumulatorImpl {
 
+	private static final long serialVersionUID = 7769272455398438735L;
+
+	private long totalCount;
+	
 	private Map<Object,Long> map;
 	
 	private AccumulationMode accumulationMode;
@@ -20,8 +24,15 @@ public class MapCounter implements ProvaEventsAccumulator {
 	}
 	
 	public MapCounter(MapCounter counter) {
+		super(counter);
+		this.totalCount = counter.totalCount;
 		this.accumulationMode = counter.accumulationMode;
 		this.map = new TreeMap<Object,Long>(counter.map);
+	}
+	
+	@Override
+	public long totalCount() {
+		return totalCount;
 	}
 	
 	public Map<Object,Long> getMap() {
@@ -32,9 +43,11 @@ public class MapCounter implements ProvaEventsAccumulator {
 		Long count = map.get(key);
 		if( count==null ) {
 			map.put(key, 1L);
+			this.totalCount++;
 			return 1L;
 		}
 		map.put(key, ++count);
+		this.totalCount++;
 		return count;
 	}
 
@@ -42,23 +55,20 @@ public class MapCounter implements ProvaEventsAccumulator {
 		Long count = map.get(key);
 		if( count==null ) {
 			map.put(key, delta);
+			this.totalCount += delta;
 			return delta;
 		}
 		map.put(key, count+delta);
+		this.totalCount += delta;
 		return count+delta;
-	}
-
-	public long totalCount() {
-		long total = 0;
-		for( long count : map.values() )
-			total += count;
-		return total;
 	}
 
 	@Override
 	public void clear() {
-		if( accumulationMode==AccumulationMode.Clear )
+		if( accumulationMode==AccumulationMode.Clear ) {
+			totalCount = 0;
 			map.clear();
+		}
 	}
 	
 	@Override
@@ -68,7 +78,8 @@ public class MapCounter implements ProvaEventsAccumulator {
 	
 	@Override
 	public String toString() {
-		return "MapCounter [map=" + map + "]";
+		return "MapCounter [count=" + totalCount
+				+ ", map=" + map + "]";
 	}
 
 }
