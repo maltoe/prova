@@ -75,6 +75,7 @@ public class ProvaSparqlSelectImpl extends ProvaBuiltinImpl {
 		if(!(oid instanceof ProvaConstant)) {
 			Random r = new Random(System.currentTimeMillis()); 
 			id = r.nextLong();
+			((ProvaVariable) oid).setAssigned(ProvaConstantImpl.create(id));
 		} else {
 			// TODO: Maybe remove all clauses matching (Id, x, x, ...) from sparql_results
 			// clauseSet.
