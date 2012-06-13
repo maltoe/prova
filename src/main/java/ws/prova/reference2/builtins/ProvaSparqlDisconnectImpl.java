@@ -78,7 +78,7 @@ public class ProvaSparqlDisconnectImpl extends ProvaBuiltinImpl {
 		try {
 			((RepositoryConnection) obj).close();
 		} catch (RepositoryException e) {
-			log.error("Could not close connection.");
+			log.error("Could not close connection: " + e.getMessage());
 			return false;
 		}
 		

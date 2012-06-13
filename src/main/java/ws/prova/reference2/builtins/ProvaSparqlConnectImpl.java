@@ -74,7 +74,7 @@ public class ProvaSparqlConnectImpl extends ProvaBuiltinImpl {
 					// Predicate is true if the connection is good.
 					return conn.isOpen();
 				} catch (RepositoryException e) {
-					log.error("Could not determine status of given repository connection.");
+					log.error("Could not determine status of given repository connection: " + e.getMessage());
 					if(log.isDebugEnabled())
 						log.debug("Exception: ", e);
 					return false;
@@ -99,7 +99,7 @@ public class ProvaSparqlConnectImpl extends ProvaBuiltinImpl {
 		try {
 			repo.initialize();
 		} catch (RepositoryException e) {
-			log.error("Could not initialize repository \"" + url + "\".");
+			log.error("Could not initialize repository \"" + url + "\": " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;
@@ -110,7 +110,7 @@ public class ProvaSparqlConnectImpl extends ProvaBuiltinImpl {
 		try {
 			con = repo.getConnection();
 		} catch (RepositoryException e) {
-			log.error("Could not connect to repository \"" + url + "\".");
+			log.error("Could not connect to repository \"" + url + "\": " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;

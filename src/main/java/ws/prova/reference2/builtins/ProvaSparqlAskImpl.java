@@ -56,7 +56,7 @@ public class ProvaSparqlAskImpl extends ProvaSparqlQueryImpl {
 		try {
 			q = con.prepareBooleanQuery(QueryLanguage.SPARQL, sparql_query);
 		} catch (Exception e) {
-			log.error("Could not prepare boolean query.");
+			log.error("Could not prepare boolean query: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;
@@ -67,7 +67,7 @@ public class ProvaSparqlAskImpl extends ProvaSparqlQueryImpl {
 		try {
 			answer = q.evaluate();
 		} catch (QueryEvaluationException e) {
-			log.error("Could not evaluate boolean query.");
+			log.error("Could not evaluate boolean query: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;

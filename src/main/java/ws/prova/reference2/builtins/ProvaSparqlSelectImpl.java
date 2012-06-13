@@ -62,7 +62,7 @@ public class ProvaSparqlSelectImpl extends ProvaSparqlQueryImpl {
 		try {
 			q = con.prepareTupleQuery(QueryLanguage.SPARQL, sparql_query);
 		} catch (Exception e) {
-			log.error("Could not prepare tuple query.");
+			log.error("Could not prepare tuple query: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;
@@ -73,7 +73,7 @@ public class ProvaSparqlSelectImpl extends ProvaSparqlQueryImpl {
 		try {
 			result = q.evaluate();
 		} catch (QueryEvaluationException e) {
-			log.error("Could not evaluate tuple query.");
+			log.error("Could not evaluate tuple query: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;
@@ -97,7 +97,7 @@ public class ProvaSparqlSelectImpl extends ProvaSparqlQueryImpl {
 				addFact(pred, cqid, newterms);
 			}
 		} catch (QueryEvaluationException e) {
-			log.error("Error while fetching tuple query results.");
+			log.error("Error while fetching tuple query results: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 			return false;
@@ -106,7 +106,7 @@ public class ProvaSparqlSelectImpl extends ProvaSparqlQueryImpl {
 		try {
 			result.close();
 		} catch (QueryEvaluationException e) {
-			log.warn("Could not close result set.");
+			log.warn("Could not close result set: " + e.getMessage());
 			if(log.isDebugEnabled())
 				log.debug("Exception: ", e);
 		}
